@@ -116,6 +116,9 @@ export default function Home() {
                     <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
                         Company Intel Radar
                     </h1>
+                    <p className="mt-2 text-lg font-medium text-cyan-300">
+                        Created by Vinudeep
+                    </p>
                     <p className="mt-4 max-w-2xl text-slate-300">
                         A source-backed company intelligence dashboard for recent news,
                         company snapshots, competitor context, financial signals, and
