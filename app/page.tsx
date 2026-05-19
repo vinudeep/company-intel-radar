@@ -21,6 +21,14 @@ type NewsApiResponse = {
     news: NewsItem[];
 };
 
+type CompanyProfile = {
+    name: string;
+    description: string;
+    sourceUrl: string | null;
+    confidence: string;
+    retrievedAt: string;
+};
+
 function Info({ label, value }: { label: string; value: string }) {
     return (
         <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
@@ -48,6 +56,7 @@ export default function Home() {
     const [companyName, setCompanyName] = useState("SAP");
     const [searchedCompany, setSearchedCompany] = useState("SAP");
     const [newsData, setNewsData] = useState<NewsApiResponse | null>(null);
+    const [profileData, setProfileData] = useState<CompanyProfile | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
 
@@ -62,30 +71,40 @@ export default function Home() {
         setIsLoading(true);
         setErrorMessage("");
         setNewsData(null);
+        setProfileData(null);
 
         try {
-            const response = await fetch(
-                `/api/news?company=${encodeURIComponent(cleanCompany)}`
-            );
+            const [newsResponse, profileResponse] = await Promise.all([
+                fetch(`/api/news?company=${encodeURIComponent(cleanCompany)}`),
+                fetch(`/api/company-profile?company=${encodeURIComponent(cleanCompany)}`),
+            ]);
 
-            if (!response.ok) {
+            if (!newsResponse.ok) {
                 throw new Error("News API request failed.");
             }
 
-            const data = (await response.json()) as NewsApiResponse;
+            if (!profileResponse.ok) {
+                throw new Error("Company profile API request failed.");
+            }
+
+            const news = (await newsResponse.json()) as NewsApiResponse;
+            const profile = (await profileResponse.json()) as CompanyProfile;
 
             setSearchedCompany(cleanCompany);
-            setNewsData(data);
+            setNewsData(news);
+            setProfileData(profile);
         } catch (error) {
             setErrorMessage(
                 error instanceof Error
                     ? error.message
-                    : "Unexpected error while loading company news."
+                    : "Unexpected error while loading company intelligence."
             );
         } finally {
             setIsLoading(false);
         }
     }
+
+    const confidence = profileData?.confidence || "Low";
 
     return (
         <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -142,17 +161,20 @@ export default function Home() {
                             <div>
                                 <h2 className="text-2xl font-bold">Company Snapshot</h2>
                                 <p className="text-sm text-slate-400">
-                                    Dynamic placeholder. Real company profile API will be added next.
+                                    Uses a public Wikipedia profile lookup where available.
                                 </p>
                             </div>
                             <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
-                                Confidence: Low
+                                Confidence: {confidence}
                             </span>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
                             <Info label="Searched Company" value={searchedCompany} />
-                            <Info label="Matched Company" value={searchedCompany} />
+                            <Info
+                                label="Matched Company"
+                                value={profileData?.name || searchedCompany}
+                            />
                             <Info label="Ticker" value="To be added" />
                             <Info label="Exchange" value="To be added" />
                             <Info label="Sector" value="To be added" />
@@ -160,9 +182,21 @@ export default function Home() {
                         </div>
 
                         <p className="mt-5 text-slate-300">
-                            Company profile data for {searchedCompany} will be added in the
-                            next step using a public company profile API.
+                            {profileData
+                                ? profileData.description
+                                : `Company profile data for ${searchedCompany} will be loaded from a public company profile API.`}
                         </p>
+
+                        {profileData?.sourceUrl ? (
+                            <a
+                                href={profileData.sourceUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-4 inline-block text-sm font-medium text-cyan-400 hover:text-cyan-300"
+                            >
+                                Open company profile source
+                            </a>
+                        ) : null}
                     </section>
 
                     <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
@@ -176,7 +210,7 @@ export default function Home() {
 
                         {isLoading ? (
                             <div className="rounded-xl border border-slate-800 bg-slate-950 p-5 text-slate-300">
-                                Loading recent news...
+                                Loading company intelligence...
                             </div>
                         ) : newsData ? (
                             <>
@@ -232,7 +266,7 @@ export default function Home() {
                             </>
                         ) : (
                             <div className="rounded-xl border border-slate-800 bg-slate-950 p-5 text-slate-300">
-                                Search for a company to load recent news.
+                                Search for a company to load recent news and profile data.
                             </div>
                         )}
                     </section>
@@ -241,9 +275,10 @@ export default function Home() {
                         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
                             <h2 className="text-2xl font-bold">Sources</h2>
                             <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-300">
-                                <li>Company snapshot is currently a dynamic placeholder</li>
+                                <li>Company snapshot uses /api/company-profile</li>
+                                <li>Wikipedia is used as the first public profile source</li>
                                 <li>Recent news comes from /api/news</li>
-                                <li>GDELT is used when your network allows access</li>
+                                <li>GDELT is used when network access allows it</li>
                                 <li>Fallback data is used when live API access is blocked</li>
                             </ul>
                         </div>
@@ -253,10 +288,11 @@ export default function Home() {
                                 Data Confidence and Limitations
                             </h2>
                             <p className="mt-4 text-sm text-slate-300">
-                                This MVP now has a real server-side news API route and a dynamic
-                                company snapshot placeholder. The next step is to add a public
-                                company profile API so the description, source, and company
-                                details are retrieved instead of manually filled.
+                                This MVP uses free public sources. Wikipedia is useful for
+                                basic profile descriptions but may not always match the exact
+                                legal entity or ticker. Future versions should add financial
+                                APIs, ticker resolution, competitor mapping, and source
+                                confidence scoring.
                             </p>
                         </div>
                     </section>

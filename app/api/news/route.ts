@@ -1,53 +1,29 @@
 import { NextResponse } from "next/server";
 
-type GdeltArticle = {
-    title?: string;
-    url?: string;
-    sourceCountry?: string;
-    domain?: string;
-    seendate?: string;
-    socialimage?: string;
-    language?: string;
+type WikipediaSearchResult = {
+    title: string;
+    pageid: number;
+    snippet?: string;
 };
 
-function getDateDaysAgo(daysAgo: number) {
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
+type WikipediaSummary = {
+    title?: string;
+    extract?: string;
+    content_urls?: {
+        desktop?: {
+            page?: string;
+        };
+    };
+};
 
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(date.getUTCDate()).padStart(2, "0");
-
-    return `${year}${month}${day}000000`;
-}
-
-function createFallbackNews(company: string) {
+function createFallbackProfile(company: string) {
     return {
-        company,
-        dateRange: "Last 3 days",
-        source: "Local fallback because GDELT fetch failed",
+        name: company,
+        description:
+            "No reliable public company profile was found from Wikipedia for this search. This may happen if the company name is ambiguous, misspelled, or not available in the selected public source.",
+        sourceUrl: null,
+        confidence: "Low",
         retrievedAt: new Date().toISOString(),
-        warning:
-            "Live GDELT fetch failed. This may be caused by VPN, proxy, firewall, or network restrictions.",
-        count: 2,
-        news: [
-            {
-                title: `${company} recent news unavailable from live API`,
-                source: "Local fallback",
-                url: "https://api.gdeltproject.org",
-                publishedAt: new Date().toISOString(),
-                language: "English",
-                sourceCountry: null,
-            },
-            {
-                title: "API failure handled safely by the application",
-                source: "Local fallback",
-                url: "https://api.gdeltproject.org",
-                publishedAt: new Date().toISOString(),
-                language: "English",
-                sourceCountry: null,
-            },
-        ],
     };
 }
 
@@ -63,20 +39,18 @@ export async function GET(request: Request) {
     }
 
     const cleanCompany = company.trim();
-    const startDate = getDateDaysAgo(3);
-    const query = encodeURIComponent(`"${cleanCompany}"`);
-
-    const gdeltUrl =
-        "https://api.gdeltproject.org/api/v2/doc/doc?" +
-        `query=${query}` +
-        "&mode=artlist" +
-        "&format=json" +
-        "&maxrecords=10" +
-        "&sort=datedesc" +
-        `&startdatetime=${startDate}`;
 
     try {
-        const response = await fetch(gdeltUrl, {
+        const searchUrl =
+            "https://en.wikipedia.org/w/api.php?" +
+            "action=query" +
+            "&list=search" +
+            `&srsearch=${encodeURIComponent(cleanCompany + " company")}` +
+            "&format=json" +
+            "&origin=*" +
+            "&srlimit=1";
+
+        const searchResponse = await fetch(searchUrl, {
             cache: "no-store",
             headers: {
                 "User-Agent": "company-intel-radar-dev",
@@ -84,43 +58,51 @@ export async function GET(request: Request) {
             },
         });
 
-        if (!response.ok) {
-            return NextResponse.json(createFallbackNews(cleanCompany));
+        if (!searchResponse.ok) {
+            return NextResponse.json(createFallbackProfile(cleanCompany));
         }
 
-        const data = await response.json();
-        const articles = Array.isArray(data.articles) ? data.articles : [];
+        const searchData = await searchResponse.json();
+        const results = searchData?.query?.search as WikipediaSearchResult[] | undefined;
 
-        const seenUrls = new Set<string>();
+        if (!results || results.length === 0) {
+            return NextResponse.json(createFallbackProfile(cleanCompany));
+        }
 
-        const news = articles
-            .filter((article: GdeltArticle) => article.url && article.title)
-            .filter((article: GdeltArticle) => {
-                if (!article.url) return false;
-                if (seenUrls.has(article.url)) return false;
-                seenUrls.add(article.url);
-                return true;
-            })
-            .map((article: GdeltArticle) => ({
-                title: article.title || "Untitled article",
-                source: article.domain || "Unknown source",
-                url: article.url || "",
-                publishedAt: article.seendate || null,
-                language: article.language || null,
-                sourceCountry: article.sourceCountry || null,
-            }));
+        const bestMatch = results[0];
+        const title = bestMatch.title;
+
+        const summaryUrl =
+            "https://en.wikipedia.org/api/rest_v1/page/summary/" +
+            encodeURIComponent(title);
+
+        const summaryResponse = await fetch(summaryUrl, {
+            cache: "no-store",
+            headers: {
+                "User-Agent": "company-intel-radar-dev",
+                Accept: "application/json",
+            },
+        });
+
+        if (!summaryResponse.ok) {
+            return NextResponse.json(createFallbackProfile(cleanCompany));
+        }
+
+        const summaryData = (await summaryResponse.json()) as WikipediaSummary;
 
         return NextResponse.json({
-            company: cleanCompany,
-            dateRange: "Last 3 days",
-            source: "GDELT",
+            name: summaryData.title || title || cleanCompany,
+            description:
+                summaryData.extract ||
+                "A public profile was found, but no summary description was available.",
+            sourceUrl:
+                summaryData.content_urls?.desktop?.page ||
+                `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`,
+            confidence: "Medium",
             retrievedAt: new Date().toISOString(),
-            gdeltUrl,
-            count: news.length,
-            news,
         });
     } catch (error) {
-        console.error("GDELT fetch error:", error);
-        return NextResponse.json(createFallbackNews(cleanCompany));
+        console.error("Company profile fetch error:", error);
+        return NextResponse.json(createFallbackProfile(cleanCompany));
     }
 }
