@@ -1,65 +1,202 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+
+const mockCompany = {
+    name: "SAP SE",
+    ticker: "SAP",
+    exchange: "XETRA / NYSE",
+    sector: "Enterprise Software",
+    headquarters: "Walldorf, Germany",
+    website: "https://www.sap.com",
+    description:
+        "SAP is a global enterprise software company known for ERP, cloud business applications, analytics, procurement, HR, and supply chain solutions.",
+};
+
+const mockNews = [
+    {
+        title: "SAP expands AI capabilities across enterprise applications",
+        source: "Mock Source",
+        date: "Recent",
+        url: "https://www.sap.com",
+        summary:
+            "SAP continues to integrate AI capabilities into its enterprise software portfolio, focusing on business productivity and automation.",
+    },
+    {
+        title: "SAP cloud business remains a strategic growth area",
+        source: "Mock Source",
+        date: "Recent",
+        url: "https://www.sap.com",
+        summary:
+            "Cloud ERP, business technology platform, and industry-specific cloud solutions remain key areas in SAP's growth strategy.",
+    },
+];
+
+function Info({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+            <p className="mt-1 font-medium text-slate-100">{value}</p>
+        </div>
+    );
+}
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    const [companyName, setCompanyName] = useState("SAP");
+    const [searchedCompany, setSearchedCompany] = useState("SAP");
+    const [isLoading, setIsLoading] = useState(false);
+
+    function handleSearch() {
+        if (!companyName.trim()) {
+            return;
+        }
+
+        setIsLoading(true);
+
+        setTimeout(() => {
+            setSearchedCompany(companyName.trim());
+            setIsLoading(false);
+        }, 700);
+    }
+
+    return (
+        <main className="min-h-screen bg-slate-950 text-slate-100">
+            <section className="mx-auto max-w-6xl px-6 py-10">
+                <div className="mb-10">
+                    <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-cyan-400">
+                        Portfolio MVP
+                    </p>
+                    <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+                        Company Intel Radar
+                    </h1>
+                    <p className="mt-4 max-w-2xl text-slate-300">
+                        A source-backed company intelligence dashboard for recent news,
+                        company snapshots, competitor context, financial signals, and
+                        executive-style briefings.
+                    </p>
+                </div>
+
+                <div className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                        Enter company name
+                    </label>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                        <input
+                            value={companyName}
+                            onChange={(event) => setCompanyName(event.target.value)}
+                            placeholder="Example: SAP, NVIDIA, Microsoft"
+                            className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-cyan-500 placeholder:text-slate-500 focus:ring-2"
+                        />
+                        <button
+                            onClick={handleSearch}
+                            className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400"
+                        >
+                            Search
+                        </button>
+                    </div>
+                </div>
+
+                {isLoading ? (
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">
+                        Loading company intelligence...
+                    </div>
+                ) : (
+                    <div className="grid gap-6">
+                        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+                            <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row">
+                                <div>
+                                    <h2 className="text-2xl font-bold">Company Snapshot</h2>
+                                    <p className="text-sm text-slate-400">
+                                        Mock data for now. Later this will come from public APIs.
+                                    </p>
+                                </div>
+                                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
+                                    Confidence: Medium
+                                </span>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <Info label="Searched Company" value={searchedCompany} />
+                                <Info label="Matched Company" value={mockCompany.name} />
+                                <Info label="Ticker" value={mockCompany.ticker} />
+                                <Info label="Exchange" value={mockCompany.exchange} />
+                                <Info label="Sector" value={mockCompany.sector} />
+                                <Info label="Headquarters" value={mockCompany.headquarters} />
+                            </div>
+
+                            <p className="mt-5 text-slate-300">{mockCompany.description}</p>
+
+                            <a
+                                href={mockCompany.website}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-4 inline-block text-sm font-medium text-cyan-400 hover:text-cyan-300"
+                            >
+                                Visit company website
+                            </a>
+                        </section>
+
+                        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+                            <div className="mb-4">
+                                <h2 className="text-2xl font-bold">Recent News</h2>
+                                <p className="text-sm text-slate-400">
+                                    Mock news. Next step: connect to GDELT for last 3 days.
+                                </p>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {mockNews.map((item) => (
+                                    <article
+                                        key={item.title}
+                                        className="rounded-xl border border-slate-800 bg-slate-950 p-4"
+                                    >
+                                        <h3 className="font-semibold text-slate-100">
+                                            {item.title}
+                                        </h3>
+                                        <p className="mt-2 text-sm text-slate-400">
+                                            {item.source} - {item.date}
+                                        </p>
+                                        <p className="mt-3 text-sm text-slate-300">
+                                            {item.summary}
+                                        </p>
+                                        <a
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="mt-3 inline-block text-sm font-medium text-cyan-400 hover:text-cyan-300"
+                                        >
+                                            Source
+                                        </a>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="grid gap-6 md:grid-cols-2">
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+                                <h2 className="text-2xl font-bold">Sources</h2>
+                                <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-300">
+                                    <li>Mock SAP website source</li>
+                                    <li>Mock recent news source</li>
+                                    <li>Real API integration will be added next</li>
+                                </ul>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+                                <h2 className="text-2xl font-bold">
+                                    Data Confidence and Limitations
+                                </h2>
+                                <p className="mt-4 text-sm text-slate-300">
+                                    This MVP currently uses mock data. The next version will add
+                                    live news from GDELT, caching, public company profiles, and
+                                    financial data. Missing or uncertain data should be shown
+                                    honestly instead of guessed.
+                                </p>
+                            </div>
+                        </section>
+                    </div>
+                )}
+            </section>
+        </main>
+    );
 }
