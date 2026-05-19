@@ -1,36 +1,25 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 
-const mockCompany = {
-    name: "SAP SE",
-    ticker: "SAP",
-    exchange: "XETRA / NYSE",
-    sector: "Enterprise Software",
-    headquarters: "Walldorf, Germany",
-    website: "https://www.sap.com",
-    description:
-        "SAP is a global enterprise software company known for ERP, cloud business applications, analytics, procurement, HR, and supply chain solutions.",
+type NewsItem = {
+    title: string;
+    source: string;
+    url: string;
+    publishedAt: string | null;
+    language: string | null;
+    sourceCountry: string | null;
 };
 
-const mockNews = [
-    {
-        title: "SAP expands AI capabilities across enterprise applications",
-        source: "Mock Source",
-        date: "Recent",
-        url: "https://www.sap.com",
-        summary:
-            "SAP continues to integrate AI capabilities into its enterprise software portfolio, focusing on business productivity and automation.",
-    },
-    {
-        title: "SAP cloud business remains a strategic growth area",
-        source: "Mock Source",
-        date: "Recent",
-        url: "https://www.sap.com",
-        summary:
-            "Cloud ERP, business technology platform, and industry-specific cloud solutions remain key areas in SAP's growth strategy.",
-    },
-];
+type NewsApiResponse = {
+    company: string;
+    dateRange: string;
+    source: string;
+    retrievedAt: string;
+    warning?: string;
+    count: number;
+    news: NewsItem[];
+};
 
 function Info({ label, value }: { label: string; value: string }) {
     return (
@@ -41,22 +30,61 @@ function Info({ label, value }: { label: string; value: string }) {
     );
 }
 
+function formatDate(value: string | null) {
+    if (!value) {
+        return "Date unavailable";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return date.toLocaleString();
+}
+
 export default function Home() {
     const [companyName, setCompanyName] = useState("SAP");
     const [searchedCompany, setSearchedCompany] = useState("SAP");
+    const [newsData, setNewsData] = useState<NewsApiResponse | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
-    function handleSearch() {
-        if (!companyName.trim()) {
+    async function handleSearch() {
+        const cleanCompany = companyName.trim();
+
+        if (!cleanCompany) {
+            setErrorMessage("Please enter a company name.");
             return;
         }
 
         setIsLoading(true);
+        setErrorMessage("");
+        setNewsData(null);
 
-        setTimeout(() => {
-            setSearchedCompany(companyName.trim());
+        try {
+            const response = await fetch(
+                `/api/news?company=${encodeURIComponent(cleanCompany)}`
+            );
+
+            if (!response.ok) {
+                throw new Error("News API request failed.");
+            }
+
+            const data = (await response.json()) as NewsApiResponse;
+
+            setSearchedCompany(cleanCompany);
+            setNewsData(data);
+        } catch (error) {
+            setErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : "Unexpected error while loading company news."
+            );
+        } finally {
             setIsLoading(false);
-        }, 700);
+        }
     }
 
     return (
@@ -84,118 +112,155 @@ export default function Home() {
                         <input
                             value={companyName}
                             onChange={(event) => setCompanyName(event.target.value)}
-                            placeholder="Example: SAP, NVIDIA, Microsoft"
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    handleSearch();
+                                }
+                            }}
+                            placeholder="Example: SAP, Google, NVIDIA, Microsoft"
                             className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-cyan-500 placeholder:text-slate-500 focus:ring-2"
                         />
                         <button
                             onClick={handleSearch}
-                            className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400"
+                            disabled={isLoading}
+                            className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            Search
+                            {isLoading ? "Searching..." : "Search"}
                         </button>
                     </div>
+
+                    {errorMessage ? (
+                        <p className="mt-3 rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-200">
+                            {errorMessage}
+                        </p>
+                    ) : null}
                 </div>
 
-                {isLoading ? (
-                    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">
-                        Loading company intelligence...
-                    </div>
-                ) : (
-                    <div className="grid gap-6">
-                        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
-                            <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row">
-                                <div>
-                                    <h2 className="text-2xl font-bold">Company Snapshot</h2>
-                                    <p className="text-sm text-slate-400">
-                                        Mock data for now. Later this will come from public APIs.
-                                    </p>
-                                </div>
-                                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
-                                    Confidence: Medium
-                                </span>
-                            </div>
-
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <Info label="Searched Company" value={searchedCompany} />
-                                <Info label="Matched Company" value={mockCompany.name} />
-                                <Info label="Ticker" value={mockCompany.ticker} />
-                                <Info label="Exchange" value={mockCompany.exchange} />
-                                <Info label="Sector" value={mockCompany.sector} />
-                                <Info label="Headquarters" value={mockCompany.headquarters} />
-                            </div>
-
-                            <p className="mt-5 text-slate-300">{mockCompany.description}</p>
-
-                            <a
-                                href={mockCompany.website}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-4 inline-block text-sm font-medium text-cyan-400 hover:text-cyan-300"
-                            >
-                                Visit company website
-                            </a>
-                        </section>
-
-                        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
-                            <div className="mb-4">
-                                <h2 className="text-2xl font-bold">Recent News</h2>
+                <div className="grid gap-6">
+                    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+                        <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row">
+                            <div>
+                                <h2 className="text-2xl font-bold">Company Snapshot</h2>
                                 <p className="text-sm text-slate-400">
-                                    Mock news. Next step: connect to GDELT for last 3 days.
+                                    Dynamic placeholder. Real company profile API will be added next.
                                 </p>
                             </div>
+                            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
+                                Confidence: Low
+                            </span>
+                        </div>
 
-                            <div className="grid gap-4 md:grid-cols-2">
-                                {mockNews.map((item) => (
-                                    <article
-                                        key={item.title}
-                                        className="rounded-xl border border-slate-800 bg-slate-950 p-4"
-                                    >
-                                        <h3 className="font-semibold text-slate-100">
-                                            {item.title}
-                                        </h3>
-                                        <p className="mt-2 text-sm text-slate-400">
-                                            {item.source} - {item.date}
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <Info label="Searched Company" value={searchedCompany} />
+                            <Info label="Matched Company" value={searchedCompany} />
+                            <Info label="Ticker" value="To be added" />
+                            <Info label="Exchange" value="To be added" />
+                            <Info label="Sector" value="To be added" />
+                            <Info label="Headquarters" value="To be added" />
+                        </div>
+
+                        <p className="mt-5 text-slate-300">
+                            Company profile data for {searchedCompany} will be added in the
+                            next step using a public company profile API.
+                        </p>
+                    </section>
+
+                    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+                        <div className="mb-4">
+                            <h2 className="text-2xl font-bold">Recent News</h2>
+                            <p className="text-sm text-slate-400">
+                                Live API route connected. Uses GDELT when available and local
+                                fallback when blocked.
+                            </p>
+                        </div>
+
+                        {isLoading ? (
+                            <div className="rounded-xl border border-slate-800 bg-slate-950 p-5 text-slate-300">
+                                Loading recent news...
+                            </div>
+                        ) : newsData ? (
+                            <>
+                                <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300">
+                                    <p>
+                                        <span className="font-semibold text-slate-100">
+                                            Source:
+                                        </span>{" "}
+                                        {newsData.source}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold text-slate-100">
+                                            Retrieved:
+                                        </span>{" "}
+                                        {formatDate(newsData.retrievedAt)}
+                                    </p>
+                                    {newsData.warning ? (
+                                        <p className="mt-3 rounded-lg border border-amber-700 bg-amber-950/40 p-3 text-amber-200">
+                                            {newsData.warning}
                                         </p>
-                                        <p className="mt-3 text-sm text-slate-300">
-                                            {item.summary}
-                                        </p>
-                                        <a
-                                            href={item.url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="mt-3 inline-block text-sm font-medium text-cyan-400 hover:text-cyan-300"
-                                        >
-                                            Source
-                                        </a>
-                                    </article>
-                                ))}
-                            </div>
-                        </section>
+                                    ) : null}
+                                </div>
 
-                        <section className="grid gap-6 md:grid-cols-2">
-                            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
-                                <h2 className="text-2xl font-bold">Sources</h2>
-                                <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-300">
-                                    <li>Mock SAP website source</li>
-                                    <li>Mock recent news source</li>
-                                    <li>Real API integration will be added next</li>
-                                </ul>
+                                {newsData.news.length === 0 ? (
+                                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-5 text-slate-300">
+                                        No recent public news found in the last 3 days.
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        {newsData.news.map((item) => (
+                                            <article
+                                                key={`${item.title}-${item.url}`}
+                                                className="rounded-xl border border-slate-800 bg-slate-950 p-4"
+                                            >
+                                                <h3 className="font-semibold text-slate-100">
+                                                    {item.title}
+                                                </h3>
+                                                <p className="mt-2 text-sm text-slate-400">
+                                                    {item.source} - {formatDate(item.publishedAt)}
+                                                </p>
+                                                <a
+                                                    href={item.url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="mt-3 inline-block text-sm font-medium text-cyan-400 hover:text-cyan-300"
+                                                >
+                                                    Open source
+                                                </a>
+                                            </article>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div className="rounded-xl border border-slate-800 bg-slate-950 p-5 text-slate-300">
+                                Search for a company to load recent news.
                             </div>
+                        )}
+                    </section>
 
-                            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
-                                <h2 className="text-2xl font-bold">
-                                    Data Confidence and Limitations
-                                </h2>
-                                <p className="mt-4 text-sm text-slate-300">
-                                    This MVP currently uses mock data. The next version will add
-                                    live news from GDELT, caching, public company profiles, and
-                                    financial data. Missing or uncertain data should be shown
-                                    honestly instead of guessed.
-                                </p>
-                            </div>
-                        </section>
-                    </div>
-                )}
+                    <section className="grid gap-6 md:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+                            <h2 className="text-2xl font-bold">Sources</h2>
+                            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-300">
+                                <li>Company snapshot is currently a dynamic placeholder</li>
+                                <li>Recent news comes from /api/news</li>
+                                <li>GDELT is used when your network allows access</li>
+                                <li>Fallback data is used when live API access is blocked</li>
+                            </ul>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+                            <h2 className="text-2xl font-bold">
+                                Data Confidence and Limitations
+                            </h2>
+                            <p className="mt-4 text-sm text-slate-300">
+                                This MVP now has a real server-side news API route and a dynamic
+                                company snapshot placeholder. The next step is to add a public
+                                company profile API so the description, source, and company
+                                details are retrieved instead of manually filled.
+                            </p>
+                        </div>
+                    </section>
+                </div>
             </section>
         </main>
     );
